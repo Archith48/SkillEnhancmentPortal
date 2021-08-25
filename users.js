@@ -17,8 +17,8 @@ var server = app.listen(5050,()=>{
 })
 
 var MongoClient = require('mongodb').MongoClient
-var url = 'mongodb://127.0.0.1:27017'
-//var url = 'mongodb+srv://pradyumnakedilaya:secret123%23@cluster0.vlavb.mongodb.net/skillenhancement?retryWrites=true&w=majority'
+//var url = 'mongodb://127.0.0.1:27017'
+var url = 'mongodb+srv://pradyumnakedilaya:secret123%23@cluster0.vlavb.mongodb.net/skillenhancement?retryWrites=true&w=majority'
 var db_name = 'skillenhancement'
 var col_name_q = 'questionAnswer'
 var col_name_u = 'user'
@@ -31,18 +31,18 @@ MongoClient.connect(url,(err,db)=>{
 
     console.log('Database Connected')
 
-    var q_counter;
-    var initial_q_counter
+    var u_counter;
+    var initial_u_counter;
 
     dbo.collection('globals').find({}).toArray((err,result)=>{
         console.log(result)
-        q_counter = result[0].q_num
-        initial_q_counter = q_counter
+        u_counter = result[0].userid
+        initial_u_counter = u_counter
 
-        console.log(q_counter)
+        console.log(u_counter)
 
     function cleanup(){
-        dbo.collection('globals').updateOne({'q_num':initial_q_counter},{$set:{'q_num':q_counter}},(err,result)=>{
+        dbo.collection('globals').updateOne({'userid':initial_u_counter},{$set:{'userid':u_counter}},(err,result)=>{
             console.log('Server Closed')
             process.exit(1)
 
@@ -83,7 +83,7 @@ MongoClient.connect(url,(err,db)=>{
 
         var p = req.body.password
         var pc = req.body.passwordConformation
-        var Id = req.body.Id 
+        var Id = u_counter 
         var un = req.body.username 
         var e = req.body.email 
         var g = req.body.gender 
@@ -94,14 +94,15 @@ MongoClient.connect(url,(err,db)=>{
         console.log(pc)    
         console.log(g)    
         
-        dbo.collection('user').find({'Id':Id}).toArray((err,result)=>{
+        dbo.collection('user').find({'username':un}).toArray((err,result)=>{
             console.log(result.length)
                 if (result.length==0)
                 {
                 var u_obj={
                     role:"user",
-                    Id:Number(Id),
+                    Id:Number(u_counter),
                     username:un,
+                    token:"abc",
                     password:p,
                     grade:0,
                     email:e,
@@ -116,11 +117,13 @@ MongoClient.connect(url,(err,db)=>{
                     console.log(result)
                     //console.log('User Added')
                     res.send('User Added')
-                    //res.redirect('/')
+                    //res.redirect('/login')
+                    u_counter+=1
                 })                    
             }
             else{
-                res.send('User already Exists')
+                res.send('Username already Exists')
+                //res.redirect('/api/signup')
             }
         })
     })
@@ -130,6 +133,8 @@ MongoClient.connect(url,(err,db)=>{
 
         //only owner
         var user_id = parseInt(req.params.user_id)
+        var token = req.headers['x-access-token']
+
         var p = req.body.password
         //var pc = req.body.passwordConformation
         var un = req.body.username 
@@ -139,8 +144,13 @@ MongoClient.connect(url,(err,db)=>{
 
         console.log(p)
         //console.log(pc)    
-        console.log(g)    
+        console.log(g) 
         
+        if(token == null){
+            res.redirect('/login')
+        }
+
+        else {
         dbo.collection('user').find({'Id':user_id}).toArray((err,result)=>{
             console.log(result.length)
                 if (result.length==1)
@@ -169,14 +179,22 @@ MongoClient.connect(url,(err,db)=>{
                 res.send('Updation Failed, please contact admin')
             }
         })
+        }
     })
 
      //delete user profile
      app.delete('/users/:user_id/delete',(req,res)=>{
         var user_id = parseInt(req.params.user_id)
+        var token = req.headers['x-access-token']
+
         console.log(user_id)
         console.log(typeof user_id)
 
+         if(token == null){
+            res.redirect('/login')
+        }
+
+        else if(token != null) {
         dbo.collection('user').find({'Id':user_id}).toArray((err,result)=>{
             console.log(result.length)
                 if (result.length==1)
@@ -189,10 +207,13 @@ MongoClient.connect(url,(err,db)=>{
                 else if (result.length==0)
                 {
                     res.send("User ID doesn\'t exist. User is may be already deleted")
+                    //res.redirect('/users/:user_id/delete')
                 }
-    })
+        })
+    }
 })   
 
+//redirecting
 
     //get all the questions asked by the user
     app.get('/users/:user_id/questions',(req,res)=>{
@@ -226,13 +247,13 @@ MongoClient.connect(url,(err,db)=>{
         var user_id = parseInt(req.params.user_id)
         console.log(user_id)
         console.log(typeof user_id)
-        dbo.collection('comments').find({'Id':user_id}).toArray((err,result)=>{
+        dbo.collection('comments').find({'UserId':user_id}).toArray((err,result)=>{
             console.log(result)
             console.log(result.length)
             if(result.length >= 1)
             {
                 var user = result
-                dbo.collection('comments').findOne({'Id':user_id},(err,result)=>{
+                dbo.collection('comments').findOne({'UserId':user_id},(err,result)=>{
                     if(err) throw err
                     console.log(result)
 
@@ -283,7 +304,7 @@ MongoClient.connect(url,(err,db)=>{
         console.log(user_id)
         console.log(typeof user_id)
 
-        dbo.collection('questionAnswer').find({'Id':user_id, 'PostTypeId':2}).toArray((err,result)=>{
+        dbo.collection('questionAnswer').find({'OwnerUserId':user_id, 'PostTypeId':2}).toArray((err,result)=>{
             console.log(result)
             console.log(result.length)
             res.send(JSON.stringify(result.length))
@@ -335,10 +356,24 @@ MongoClient.connect(url,(err,db)=>{
         })
 
     })
-
+/* 
     app.get('/tags',(req,res)=>{
-    })
+        dbo.collection('questionAnswer').find().toArray((err,result)=>{
+            if(err) throw err
+            console.log(result)
+            console.log(result.length)
+            if(result.length >= 1)
+                {
+                        res.send(JSON.stringify(result))                    
+                }
+            else
+                {
+                   res.send('No questions tagged')
+                }
+        })
 
+    })
+ */
 
 })
 

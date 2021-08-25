@@ -62,24 +62,20 @@ MongoClient.connect(url,function(err,db){
       var name=(req.body.searchname).split(":")[1]
       console.log(name)
       var users=[]    //holds id of user's name
-      var searchuser={}
+      var searchuser=[]
       var question=[]
       var answer=[]
-      dbo.collection(collection2).find({}).toArray(function(arr,result){
-        console.log(result)
+      dbo.collection(collection2).find({username:name}).toArray(function(arr,result){
+        //console.log(result)
         for (i=0;i<result.length;i++)
         {
-          //console.log(result[i].DisplayName)
-          //console.log(result[i].DisplayName==name)
-          if (result[i].username==name)     //DisplayName var in database
-          {
             users.push(result[i].Id)
-          }
+            searchuser.push(result[i])
         }
-        console.log(users)
+        //console.log(users) 
+        //console.log(searchuser)       
       })
       dbo.collection(collection).find({}).toArray(function(arr,result){
-        console.log(result)
         for (i=0;i<users.length;i++)
         {
           questions_count=0
@@ -98,14 +94,15 @@ MongoClient.connect(url,function(err,db){
                  answer_count=answer_count+1
                  //answer.push(result[j].Body)
                }
-
             }
           }
-          searchuser[users[i]]=[questions_count,answer_count]
-          console.log(searchuser)
+          //searchuser[i].push(questions_count,answer_count)
+          searchuser[i]["question_count"]=questions_count
+          searchuser[i]["answer_count"]=answer_count
+          //console.log(searchuser)
         }
         res.send(searchuser)
-      })
+    })      
     })
 
     app.post("/searchquestion",(req,res)=>{
@@ -119,9 +116,11 @@ MongoClient.connect(url,function(err,db){
       var answer=[]
       var p=-1
       var question = req.body.question
-      question.replace("of","")
+      reg = /a|about|above|after|again|against|all|am|an|and|any|are|as|at|be|because|been|before|being|below|between|both|but|by|cant|cannot|could|couldnt|did|do|does|doing|down|during|each|few|for|from|further|had|has|have|having|he|her|here|hers|herself|him|himself|his|how|i|if|in|into|is|it|its|itself|me|more|most|my|myself|no|nor|not|of|off|on|once|only|or|other|ought|our|ours|ourselves|out|over|own|same|she|should|so|some|such|than|that|the|their|theirs|them|themselves|then|there|these|they|this|those|through|to|too|under|until|up|very|was|were|what|when|where|which|while|who|whom|why|with|would|you|your|yours|yourself|yourselves|aren't|can't|couldn't|didn't|doesn't|don't|hadn't|hasn't|haven't|he'd|he'll|he's|here's|how's|i'd|i'll|i'm|i've|isn't|it's|let's|shan't|she'd|she'll|she's|shouldn't|that's|there's|they'd|they'll|they're|they've|wasn't|we'd|we'll|we're|we've|weren't|what's|when's|where's|who's|why's|won't|wouldn't|you'd|you'll|you're|you've/i;
+      /*question.replace("of","")
       question.replace("the","")
-      question.replace("is","")
+      question.replace("is","")*/
+      question.replace(reg,"")
       question1=question.split(" ")
       console.log(question1)
       dbo.collection(collection).find({}).toArray(function(arr,result){  

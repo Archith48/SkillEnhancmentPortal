@@ -25,7 +25,6 @@ var col_name_u = 'user'
 
 var validate_user = require('./authorize')
 //const { check_user, check_question} = require('./input_validate')
-var search_user = require('./search_mods')
 
 var request = require('request')
 
@@ -76,7 +75,7 @@ MongoClient.connect(url,(err,db)=>{
                     console.log(result)
 
                     answer.ViewCount+=1
-                    res.send(JSON.stringify(answer))
+                    res.send(answer)
                 })
                 
             }
@@ -98,32 +97,59 @@ MongoClient.connect(url,(err,db)=>{
                 if(result.length == 1 && validate_user(token,result[0])){
                     
                     var User = result[0]
+                    var ActionUserId = result[0].Id
 
                 dbo.collection(col_name_q).find({'PostTypeId':2,'Id':answer_id}).toArray((err,result)=>{
                     if(err) throw err
                     if(result.length == 1){
-                        
+                        var OwnerUserId = result[0].OwnerUserId
                         var question_id = result[0].ParentId
                         dbo.collection(col_name_q).find({'PostTypeId':1,'Id':question_id}).toArray((err,result)=>{
                             if(err) throw err
                             if(result.length==1 && result[0].OwnerUserId == User.Id){
-                                if(result[0].AcceptedAnswerId==-1 &&  result[0].ClosedDate==null)
+                                if(result[0].AcceptedAnswerId!=-1){
+                                    res.send('Contains An Already Accepted Answer,Undo that to Accept this one')
+                                }
+                                //console.log(result[0].ClosedDate)
+                                else if(result[0].ClosedDate==null)
                                 {
                                     dbo.collection(col_name_q).updateOne({'PostTypeId':1,'Id':question_id},{$set:{'AcceptedAnswerId':answer_id,'ClosedDate':Date.now()}},(err,result)=>{
                                         if(err) throw err
                                         console.log(result)
-                                        res.redirect(`/answers/${answer_id}`)
+
+                                        new Promise((resolve,reject)=>{
+                                            if(ActionUserId != OwnerUserId){
+                                                console.log('inside noti call')
+                                                request.post({
+                                                    headers:{'content-type':'application/json',
+                                                        'x-access-token':token},
+                                                    url:`http://localhost:8083/User/${OwnerUserId}/push`,
+                                                    body:JSON.stringify({
+                                                        Body: "Congo!!!! "+User.username + " has accepted your answer on this question",
+                                                        PostId:answer_id
+                                                    })
+                                                },(err,response)=>{
+                                                    if(err) throw err
+                                                    console.log(response.body)
+                                                    
+                                                })
+                                            }
+                                            resolve()
+                                            
+                                        }).then(()=>{
+                                            res.redirect(`/answers/${answer_id}`)
+                                        })
                                     })
                                 }
                                 else{
-                                    res.send('Contains An Already Accepted Answer,Undo that to Accept this one')
+                                    res.send('Question is already Closed')
                                 }
     
     
                             }
                             else{
                                 //res.render('invalid_answer.jade')
-                                res.send('Invalid Question ID')        
+                                res.send('Invalid Answer ID')        
                             }
                         })
     
@@ -162,7 +188,7 @@ MongoClient.connect(url,(err,db)=>{
                         dbo.collection(col_name_q).find({'PostTypeId':1,'Id':question_id}).toArray((err,result)=>{
                             if(err) throw err
                             if(result.length==1  && User.Id == result[0].OwnerUserId){
-                                if(result[0].AcceptedAnswerId!=-1 && result[0].ClosedDate==null)
+                                if(result[0].AcceptedAnswerId==answer_id && result[0].ClosedDate!=null)
                                 {
                                     dbo.collection(col_name_q).updateOne({'PostTypeId':1,'Id':question_id},{$set:{'AcceptedAnswerId':-1,'ClosedDate':null}},(err,result)=>{
                                         if(err) throw err
@@ -256,9 +282,6 @@ MongoClient.connect(url,(err,db)=>{
                                 var question_id = result[0].Id
                                 if(result[0].AcceptedAnswerId == answer_id){
                                     res.send('Cant Delete an Accepted Answer')
-                                }
-                                else if(result[0].ClosedDate!=null){
-                                    res.send('Question is Closed')
                                 }
                                 else{
                                     dbo.collection(col_name_q).deleteOne({'PostTypeId':2,'Id':answer_id},(err,result)=>{

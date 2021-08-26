@@ -68,31 +68,38 @@ MongoClient.connect(url,(err,db)=>{
     process.on('SIGINT',cleanup)
 
 
-    app.get('/User/User_Id/notifs',(req,res)=>{
+    app.get('/User/:User_Id/notifs',(req,res)=>{
         var token = req.headers['x-access-token']
         var User_Id = parseInt(req.params.User_Id)
+        console.log(User_Id)
         if(token == null){
             res.redirect('/login')
         }
         else{
             dbo.collection(col_name_u).find({'token':token}).toArray((err,result)=>{
 
-                if(result.length == 1 && validate_user(token,result[0])){
+                if(result.length == 1 && validate_user(token,result[0]) && User_Id==result[0].Id){
                     var User = result[0]
 
 
-                    dbo.collection(col_noti).find({'UserId':User_Id}).toArray((err,result)=>{
+                    dbo.collection(col_noti).find({'UserId':User_Id,'Status':'unread'}).toArray((err,result)=>{
                         if(err)
                             throw err
+                        if(result.length!=0)
                         res.send(result)
+                        else
+                        res.send('No Unread Notifications')
                     })
 
+                }
+                else{
+                    res.send('Invalid User')
                 }
             })
 
         }
     })
-    app.get('/User/User_Id/:noti_id/read',(req,res)=>{
+    app.get('/User/:User_Id/:noti_id/read',(req,res)=>{
         var token = req.headers['x-access-token']
         var noti_id = parseInt(req.params.noti_id)
         var User_Id = parseInt(req.params.User_Id)
@@ -103,7 +110,7 @@ MongoClient.connect(url,(err,db)=>{
         else{
             dbo.collection(col_name_u).find({'token':token}).toArray((err,result)=>{
 
-                if(result.length == 1 && validate_user(token,result[0])){
+                if(result.length == 1 && validate_user(token,result[0]) && User_Id==result[0].Id){
                     var User = result[0]
 
 
@@ -115,6 +122,7 @@ MongoClient.connect(url,(err,db)=>{
                                 if(err)
                                     throw err
                                 console.log(result)
+                                res.redirect(`/User/${User_Id}/notifs`)
                             })
                         }
                         else{
@@ -130,7 +138,7 @@ MongoClient.connect(url,(err,db)=>{
 
         }
     })
-    app.get('/User/User_Id/readAll',(req,res)=>{
+    app.get('/User/:User_Id/readAll',(req,res)=>{
         var token = req.headers['x-access-token']
         var User_Id = parseInt(req.params.User_Id)
         if(token == null){
@@ -139,7 +147,7 @@ MongoClient.connect(url,(err,db)=>{
         else{
             dbo.collection(col_name_u).find({'token':token}).toArray((err,result)=>{
 
-                if(result.length == 1 && validate_user(token,result[0])){
+                if(result.length == 1 && validate_user(token,result[0]) && User_Id==result[0].Id){
                     var User = result[0]
 
 

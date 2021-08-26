@@ -27,7 +27,6 @@ var col_name_u = 'user'
 
 
 var validate_user = require('./authorize')
-//const { check_user, check_question} = require('./input_validate')
 
 MongoClient.connect(url,(err,db)=>{
     if(err)throw err
@@ -104,7 +103,7 @@ MongoClient.connect(url,(err,db)=>{
                         console.log(result)
 
                         question.ViewCount+=1
-                        res.send(JSON.stringify(question))
+                        res.send(question)
                     })
                     
                 }
@@ -230,27 +229,33 @@ MongoClient.connect(url,(err,db)=>{
                                 console.log('action user id'+ActionUserId)
                                 console.log('owner user id'+OwnerUserId)
 
-                                if(ActionUserId != OwnerUserId){
-                                    console.log('inside noti call')
-                                    request.post({
-                                        headers:{'content-type':'application/json',
-                                            'x-access-token':token},
-                                        url:`http://localhost:8083/User/${OwnerUserId}/push`,
-                                        body:JSON.stringify({
-                                            Body: User.username + " has Reacted On your Post",
-                                            PostId:question_id
+                                new Promise((resolve,reject)=>{
+                                    if(ActionUserId != OwnerUserId){
+                                        console.log('inside noti call')
+                                        request.post({
+                                            headers:{'content-type':'application/json',
+                                                'x-access-token':token},
+                                            url:`http://localhost:8083/User/${OwnerUserId}/push`,
+                                            body:JSON.stringify({
+                                                Body: User.username + " has Reacted On your Post",
+                                                PostId:question_id
+                                            })
+                                        },(err,response)=>{
+                                            if(err) throw err
+                                            console.log(response.body)
+                                            
                                         })
-                                    },(err,response)=>{
-                                        if(err) throw err
-                                        console.log(response.body)
-                                        if(PostTypeId == 1){
-                                            res.redirect(`/questions/${question_id}`)
-                                        }
-                                        else if(PostTypeId == 2)
-                                            res.send('Success')
-        
-                                    })
-                                }
+                                    }
+                                    resolve()
+                                    
+                                }).then(()=>{
+                                    if(PostTypeId == 1){
+                                        res.redirect(`/questions/${question_id}`)
+                                    }
+                                    else if(PostTypeId == 2)
+                                        res.send('Success')
+
+                                })
                                 
 
                             })
@@ -323,27 +328,33 @@ MongoClient.connect(url,(err,db)=>{
                                 console.log('action user id'+ActionUserId)
                                 console.log('owner user id'+OwnerUserId)
 
-                                if(ActionUserId != OwnerUserId){
-                                    console.log('inside noti call')
-                                    request.post({
-                                        headers:{'content-type':'application/json',
-                                            'x-access-token':token},
-                                        url:`http://localhost:8083/User/${OwnerUserId}/push`,
-                                        body:JSON.stringify({
-                                            Body: User.username + " has Reacted On your Post",
-                                            PostId:question_id
+                                new Promise((resolve,reject)=>{
+                                    if(ActionUserId != OwnerUserId){
+                                        console.log('inside noti call')
+                                        request.post({
+                                            headers:{'content-type':'application/json',
+                                                'x-access-token':token},
+                                            url:`http://localhost:8083/User/${OwnerUserId}/push`,
+                                            body:JSON.stringify({
+                                                Body: User.username + " has Reacted On your Post",
+                                                PostId:question_id
+                                            })
+                                        },(err,response)=>{
+                                            if(err) throw err
+                                            console.log(response.body)
+                                            
                                         })
-                                    },(err,response)=>{
-                                        if(err) throw err
-                                        console.log(response.body)
-                                        if(PostTypeId == 1){
-                                            res.redirect(`/questions/${question_id}`)
-                                        }
-                                        else if(PostTypeId == 2)
-                                            res.send('Success')
-        
-                                    })
-                                }
+                                    }
+                                    resolve()
+                                    
+                                }).then(()=>{
+                                    if(PostTypeId == 1){
+                                        res.redirect(`/questions/${question_id}`)
+                                    }
+                                    else if(PostTypeId == 2)
+                                        res.send('Success')
+
+                                })
                             })
 
                             
@@ -446,6 +457,8 @@ MongoClient.connect(url,(err,db)=>{
     })
 
     app.post('/questions/:question_id/edit',(req,res)=>{
+
+        console.log('hi')
 
         var question_id = parseInt(req.params.question_id)
         var token = req.headers['x-access-token']
@@ -590,12 +603,16 @@ MongoClient.connect(url,(err,db)=>{
                 if(result.length == 1 && validate_user(token,result[0])){
                     
                     var ActionUserId = result[0].Id
+
                     var User = result[0]
 
                     dbo.collection(col_name_q).find({'Id':question_id}).toArray((err,result)=>{
                         if(err) throw err
                         if(result.length == 1){
                             if(result[0].AcceptedAnswerId == -1 && result[0].ClosedDate==null){
+
+                                var OwnerUserId = result[0].OwnerUserId
+
                             var a_obj={
                                 'Id':q_counter++,
                                 'PostTypeId':2,
@@ -623,17 +640,15 @@ MongoClient.connect(url,(err,db)=>{
                                             'x-access-token':token},
                                         url:`http://localhost:8083/User/${OwnerUserId}/push`,
                                         body:JSON.stringify({
-                                            Body: User.username + " has answerd on a Post you answered",
+                                            Body: User.username + " has answerd to your question",
                                             PostId:question_id
                                         })
                                     },(err,response)=>{
                                         if(err) throw err
                                         console.log(response.body)
-                                        if(PostTypeId == 1){
-                                            res.redirect(`http://localhost:8088/answers/${a_obj.Id}`)
-                                        }
-                                        else if(PostTypeId == 2)
-                                            res.send('Success')
+                                        res.redirect(`http://localhost:8088/answers/${a_obj.Id}`)
+                                        
+                                        
         
                                     })
                                 }
@@ -662,7 +677,7 @@ MongoClient.connect(url,(err,db)=>{
 
 
     })
-    app.get('/questions/:question_id/close',(req,res)=>{
+    app.post('/questions/:question_id/close',(req,res)=>{
         var question_id = parseInt(req.params.question_id)
         var token = req.headers['x-access-token']
 
@@ -675,15 +690,57 @@ MongoClient.connect(url,(err,db)=>{
                 if(result.length == 1 && validate_user(token,result[0])){
 
                     var User = result[0]
+                    console.log('User ---- '+User.Id)
 
                     dbo.collection(col_name_q).find({'Id':question_id}).toArray((err,result)=>{
+                        console.log(result[0])
                         if(result.length == 1 && result[0].OwnerUserId==User.Id && result[0].ClosedDate==null){
+                            var OwnerUserId = result[0].OwnerUserId
+
                             dbo.collection(col_name_q).updateOne({'Id':question_id},{$set:{'ClosedDate':Date.now()}},(err,result)=>{
                                 if(err) throw err
                                 console.log(result)
 
+
+                                dbo.collection(col_name_q).find({'PostTypeId':2,'ParentId':question_id}).toArray((err,result)=>{
+                                    var ans_set = new Set(result)
+
+                                    new Promise((resolve,reject)=>{
+                                        ans_set.forEach((answer)=>{
+                                            console.log('inside noti call')
+                                            new Promise((resolve,reject)=>{
+                                                request.post({
+                                                    headers:{'content-type':'application/json',
+                                                        'x-access-token':token},
+                                                    url:`http://localhost:8083/User/${answer.OwnerUserId}/push`,
+                                                    body:JSON.stringify({
+                                                        Body: User.username + " has Closed the post you answerd on",
+                                                        PostId:question_id
+                                                    })
+                                                },(err,response)=>{
+                                                    if(err) throw err
+                                                    console.log(response.body)
+                    
+                                                })
+                                                resolve()
+                                            }).then(()=>{})
+                                            
+        
+                                        })
+                                        resolve()
+    
+                                    }).then(()=>{
+                                        
+                                            res.redirect(`/questions/${question_id}`)
+                                        
+
+                                    })
+                                        
+                                })
+
+
                                 //res.redirect('/user/questions') //something like that
-                                res.redirect(`/questions/${question_id}`)
+                                // res.redirect(`/questions/${question_id}`)
                             })
                         }
                         else{

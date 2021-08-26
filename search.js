@@ -27,7 +27,7 @@ MongoClient.connect(url,function(err,db){
     })
 
     app.post("/mainpage",(req,res)=>{
-      dbo.collection(collection).find({}).toArray(function(arr,result){
+      /*dbo.collection(collection).find({}).toArray(function(arr,result){
           console.log(typeof(result))
 
           var question=[]
@@ -55,7 +55,10 @@ MongoClient.connect(url,function(err,db){
           }
           res.send(questiondetails)
           //res.send(JSON.stringify(result))
-      })
+      })*/
+      dbo.collection(collection).find({}).toArray(function(arr,result){
+        res.send(JSON.stringify(result))
+     })
     })
 
     app.post("/searchuser",(req,res)=>{
@@ -147,65 +150,72 @@ MongoClient.connect(url,function(err,db){
                 p=p+1
                 par_id.push(result[j].Id)
                 //console.log("ID="+par_id)
-                q.push(result[j])    
+                q.push({"Title":result[j].Title,"Body":result[j].Body})
+                votes.push(result[j].Score)
+                console.log("QUESTIONS")
+                console.log(q)
+                console.log("VOTES")
+                console.log(votes)      
               }
             }
             //console.log("Questions and Votes over") 
           }      
         }
         //console.log("Answer begin")
-        //console.log(p)
+        console.log(q)
         /*for (i=0;i<=p;i++)
         {
            console.log(par_id[i])
         }*/
-       for (x=0;x<=p;x++)    //Answer array
+
+        for (x=0;x<=p;x++)    //Answer array
         {
           var answer=[]
-          var flag=0
           for (i=0;i<result.length;i++)
           {
             if ((result[i].PostTypeId==2) && (par_id[x]==result[i].ParentId))
             {
-                answer.push(result[i])
-                flag=1
+              answer.push(result[i].Body)
             }
-          } 
-          //allanswer.push(answer)
+          }
+          allanswer.push(answer)
+          console.log(allanswer)
         } 
-        if(flag==0)
-        {
-          answer.push("")
-        }
-
+        //console.log(search)
         dbo.collection(collection3).find({}).toArray(function(arr,result){  //Comments
-        for (x=0;x<=p;x++)    //Comments array
-        {
-          var c=[]
+          
+          //console.log("Comments start")
+          //console.log(result)
+          for (x=0;x<=p;x++)
+          {
+            var c=[]
             for (i=0;i<result.length;i++)
             {
               if (par_id[x]==result[i].PostId)
               {
-                c.push(result[i])
+                c.push(result[i].Text)
               }              
             }
-            //comments.push(c)
-          //console.log(search) 
-        }        
-        //Combining questions, comments, votes and answer
-        for (n=0;n<=p;n++)
-        {
-          var s={}
-          s["question_votes"]=q[n]
-          s["answer"]=answer[n]
-          s["comments"]=c[n]
-          //console.log(s)
-          search.push(s)
-        }        
-      res.send(search)
+            comments.push(c)
+          }
+          
+          //Combining questions, comments, votes and answer
+          for (n=0;n<=p;n++)
+          {
+            var s={}
+            s["question"]=q[n].Title
+            s["body"]=q[n].Body
+            s["answer"]=allanswer[n]
+            s["votes"]=votes[n]
+            s["comments"]=comments[n]
+            //console.log(s)
+            search.push(s)
+          }        
+        res.send(search)
         })
     })
-})
+   
+    })
    
 })
 var server = app.listen(8087,function(){
